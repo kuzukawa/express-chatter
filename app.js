@@ -8,6 +8,8 @@ var fileUpload = require('express-fileupload');
 var passport = require('passport');
 var session = require('express-session')
 var LocalStrategy = require('passport-local').Strategy;
+var TwitterStrategy = require('passport-twitter').Strategy;
+require('dotenv').config();
 
 //MongoDB Schema
 var Message = require('./schema/Message');
@@ -35,6 +37,13 @@ mongoose.connect('mongodb://localhost:27017/chatapp', function(err) {
   }
 });
 
+// Twitter configuration
+var twitterConfig = {
+  consumerKey: process.env.TWITTER_CONSUMER_KEY,
+  consumerSecret: process.env.TWITTER_CONSUMER_SECRET,
+  callbackURL: process.env.TWITTER_CALLBACK_URL,
+};
+
 // view設定
 app.set('views', path.join(__dirname,'templates'));
 app.set('view engine', 'pug');
@@ -53,6 +62,7 @@ app.get("/", function(req, res, next) {
 });
 
 //Signin
+/*
 app.get('/signin', function(req, res, next) {
   return res.render('signin');
 });
@@ -105,7 +115,41 @@ passport.use(new LocalStrategy(
     });
   }
 ));
+*/
 
+passport.use(new TwitterStrategy(twitterConfig,function(token, tokenSecret, profile, done){
+  User.findOne({ twitter_profile_id: profile.id }, function(err,user) {
+    if(err) {
+      return done(err);
+    } else if(!user) {
+      var _user = {
+        username: profile.displayName,
+        twitter_profile_id: profile.id,
+        avatar_path: profile.photos[0].value
+      };
+      var newUser = new User(_user);
+      newUser.save(function(err){
+        if(err) throw err;
+        return done(null, newUser);
+      });
+    } else {
+      return done(null, user);
+    }
+  })
+}));
+app.get('/oauth/twitter', passport.authenticate('twitter'));
+app.get('/oauth/twitter/callback', passport.authenticate('twitter'),function(req, res, next){
+  User.findOne({_id: req.session.passport.user}, function(err, user){
+    if(err||!req.session) {
+      return res.redirect('/oauth/twitter');
+    }
+    req.session.user = {
+      username: user.username,
+      avatar_path: user.avatar_path
+    };
+    return res.redirect('/');
+  });
+});
 passport.serializeUser(function(user, done) {
   done(null, user._id);
 });
@@ -128,12 +172,14 @@ app.post("/update", fileUpload(), function(req, res) {
     });   
     var newMessage = new Message({
       username: req.body.username,
+      avatar_path: req.session.user.avatar_path,
       message: req.body.message,
       image_path: '/image/' + req.files.image.name
     });
   } else {
     var newMessage = new Message({
       username: req.body.username,
+      avatar_path: req.session.user.avatar_path,
       message: req.body.message
     });
   }
