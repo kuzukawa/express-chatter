@@ -7,8 +7,10 @@ var mongoose = require('mongoose');
 var fileUpload = require('express-fileupload');
 var passport = require('passport');
 var session = require('express-session')
+var MongoStore = require('connect-mongo')(session);
 var LocalStrategy = require('passport-local').Strategy;
 var TwitterStrategy = require('passport-twitter').Strategy;
+var logger = require('./lib/logger');
 require('dotenv').config();
 
 //MongoDB Schema
@@ -24,7 +26,17 @@ app.use("/image", express.static(path.join(__dirname, "image")));
 app.use("/avatar", express.static(path.join(__dirname, "avatar")));
 
 //認証用ミドルウェアの追加
-app.use(session({ secret: 'HogeFuga'}));
+app.use(session({
+  secret: 'b87ef9fb4a152dbfe4cf4ea630444474',
+  resave: false,
+  saveUninitialized: false,
+  store: new MongoStore({
+    mongooseConnection: mongoose.connection,
+    db: 'session',
+    ttl: 14 * 24 * 60 * 60,
+  }),
+  // cookie: { secure: true },
+}));
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -53,6 +65,7 @@ app.set('view engine', 'pug');
 app.get("/", function(req, res, next) {
   //return res.send("Hello World");
   //return res.render("index", {title: "Hello World"});
+  //logger.warn(req.session.user);
   Message.find({}, function(err, msgs){
     if(err) throw err;
     return res.render('index', {
@@ -196,6 +209,30 @@ app.get("/form", function(req,res){
 app.post("/form", function(req, res) {
   return res.render("result", { username: req.body.username,
     message: req.body.message});
+});
+
+// test for error handling( FOR TEST ONLY.)
+app.get("/error", function(req, res, next) {
+  return next(new Error("error"));
+}); 
+
+// error handling
+app.use(function(err, req, res, next) {
+  logger.error(err);
+  res.status(err.status || 500);
+  return res.render('error', {
+    message: err.message,
+    status: err.status || 500
+  });
+});
+
+// 404 handling
+app.use(function(req, res, next) {
+  var err = new Error('Not Found');
+  err.status = 404;
+  return res.render('error', {
+    status: err.status,
+  })
 });
 
 var server = http.createServer(app);
