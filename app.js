@@ -10,17 +10,37 @@ var session = require('express-session')
 var MongoStore = require('connect-mongo')(session);
 var LocalStrategy = require('passport-local').Strategy;
 var TwitterStrategy = require('passport-twitter').Strategy;
+
+// for security
+var helmet = require('helmet');
+
+// for csrf
+var csrf = require('csurf');
+
+// for cors
+var cors = require('cors');
+var corsOption = {
+  "origin": "www.example.com",
+  "methods": "GET,HEAD,POST"
+};
+
+var child_process = require('child_process');
+
 var logger = require('./lib/logger');
 require('dotenv').config();
 
 //MongoDB Schema
 var Message = require('./schema/Message');
 var User = require('./schema/User');
+const { toNamespacedPath } = require('path');
 
 var app = express();
 
 app.use(morgan("combined"));
 app.use(bodyParser.urlencoded({ extended: false }));
+app.use(helmet());
+var csrfProtection = csrf();
+
 app.use("/static", express.static(path.join(__dirname, "static")));
 app.use("/image", express.static(path.join(__dirname, "image")));
 app.use("/avatar", express.static(path.join(__dirname, "avatar")));
@@ -173,11 +193,11 @@ passport.deserializeUser(function(id, done) {
   })
 });
 
-app.get("/update", function(req, res) {
-  return res.render("update");
+app.get("/update", csrfProtection, function(req, res) {
+  return res.render("update", {csrf: req.csrfToken()});
 });
 
-app.post("/update", fileUpload(), function(req, res) {
+app.post("/update", fileUpload(), csrfProtection, function(req, res) {
 
   if(req.files && req.files.image) {    
     req.files.image.mv('./image/' + req.files.image.name, function(err) {
@@ -216,10 +236,25 @@ app.get("/error", function(req, res, next) {
   return next(new Error("error"));
 }); 
 
+// test for OS Cmd injection(FOR TEST ONLY.)
+app.get("/whois", function(req, res, next) {
+  child_process.execFile('whois', [req.query.url], function(error, stdout, stderr){
+    if(error){
+      throw error;
+    }
+    return res.send(stdout);
+  });
+});
+
 // error handling
 app.use(function(err, req, res, next) {
   logger.error(err);
-  res.status(err.status || 500);
+  if(err.code === 'EBADCSRFTOKEN') {
+    res.status(403);
+  } else {
+    res.status(err.status || 500);
+  }
+
   return res.render('error', {
     message: err.message,
     status: err.status || 500
