@@ -7,9 +7,17 @@ var mongoose = require('mongoose');
 var fileUpload = require('express-fileupload');
 var passport = require('passport');
 var session = require('express-session')
+var logger = require('./lib/logger');
 var MongoStore = require('connect-mongo')(session);
-var LocalStrategy = require('passport-local').Strategy;
+require('dotenv').config();
+
+// for authentication
+//var LocalStrategy = require('passport-local').Strategy;
 var TwitterStrategy = require('passport-twitter').Strategy;
+
+// for timezone
+var moment = require('moment-timezone');
+moment.tz.setDefault("Asia/Tokyo");
 
 // for security
 var helmet = require('helmet');
@@ -26,9 +34,6 @@ var corsOption = {
 
 var child_process = require('child_process');
 
-var logger = require('./lib/logger');
-require('dotenv').config();
-
 //MongoDB Schema
 var Message = require('./schema/Message');
 var User = require('./schema/User');
@@ -44,6 +49,7 @@ var csrfProtection = csrf();
 app.use("/static", express.static(path.join(__dirname, "static")));
 app.use("/image", express.static(path.join(__dirname, "image")));
 app.use("/avatar", express.static(path.join(__dirname, "avatar")));
+app.use("/css", express.static(path.join(__dirname, "css")));
 
 //認証用ミドルウェアの追加
 app.use(session({
@@ -69,6 +75,15 @@ mongoose.connect('mongodb://localhost:27017/chatapp', function(err) {
   }
 });
 
+// check if logged in
+function checkAuth(req, res, next) {
+  if(req.isAuthenticated()){
+    return next();
+  } else {
+    return res.redirect('/oauth/twitter');
+  }
+}
+
 // Twitter configuration
 var twitterConfig = {
   consumerKey: process.env.TWITTER_CONSUMER_KEY,
@@ -90,7 +105,9 @@ app.get("/", function(req, res, next) {
     if(err) throw err;
     return res.render('index', {
       messages: msgs,
-      user: req.session && req.session.user ? req.session.user : null});
+      user: req.session && req.session.user ? req.session.user : null,
+      moment: moment
+    });
   });
 });
 
@@ -194,10 +211,12 @@ passport.deserializeUser(function(id, done) {
 });
 
 app.get("/update", csrfProtection, function(req, res) {
-  return res.render("update", {csrf: req.csrfToken()});
+  return res.render("update", {
+    user: req.session && req.session.user ? req.session.user : null, 
+    csrf: req.csrfToken()});
 });
 
-app.post("/update", fileUpload(), csrfProtection, function(req, res) {
+app.post("/update", checkAuth, fileUpload(), csrfProtection, function(req, res) {
 
   if(req.files && req.files.image) {    
     req.files.image.mv('./image/' + req.files.image.name, function(err) {
@@ -229,6 +248,12 @@ app.get("/form", function(req,res){
 app.post("/form", function(req, res) {
   return res.render("result", { username: req.body.username,
     message: req.body.message});
+});
+
+app.get("/logout", function(req, res, next){
+  req.logout();
+  delete req.session.user;
+  return res.redirect("/");
 });
 
 // test for error handling( FOR TEST ONLY.)
