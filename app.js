@@ -43,7 +43,15 @@ var app = express();
 
 app.use(morgan("combined"));
 app.use(bodyParser.urlencoded({ extended: false }));
-app.use(helmet());
+
+// apply helmet
+var cps = helmet.contentSecurityPolicy.getDefaultDirectives();
+cps["img-src"] = ["*", "data"];
+app.use(helmet({
+  contentSecurityPolicy:{directives: cps},
+}));
+
+// apply csrf
 var csrfProtection = csrf();
 
 app.use("/static", express.static(path.join(__dirname, "static")));
