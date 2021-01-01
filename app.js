@@ -1,45 +1,47 @@
-var http = require('http');
-var path = require('path');
-var morgan = require('morgan');
-var express = require('express');
-var bodyParser = require('body-parser');
-var mongoose = require('mongoose');
-var fileUpload = require('express-fileupload');
-var passport = require('passport');
-var session = require('express-session')
-var logger = require('./lib/logger');
-var MongoStore = require('connect-mongo')(session);
+const http = require('http');
+const path = require('path');
+const morgan = require('morgan');
+const express = require('express');
+const bodyParser = require('body-parser');
+const mongoose = require('mongoose');
+const fileUpload = require('express-fileupload');
+const passport = require('passport');
+const session = require('express-session')
+const logger = require('./lib/logger');
+const MongoStore = require('connect-mongo')(session);
 require('dotenv').config();
 
 // for authentication
 //var LocalStrategy = require('passport-local').Strategy;
-var TwitterStrategy = require('passport-twitter').Strategy;
+const TwitterStrategy = require('passport-twitter').Strategy;
 
 // for timezone
-var moment = require('moment-timezone');
+const moment = require('moment-timezone');
 moment.tz.setDefault("Asia/Tokyo");
 
 // for security
-var helmet = require('helmet');
+const helmet = require('helmet');
 
 // for csrf
-var csrf = require('csurf');
+const csrf = require('csurf');
 
 // for cors
-var cors = require('cors');
-var corsOption = {
+/*
+const cors = require('cors');
+const corsOption = {
   "origin": "www.example.com",
   "methods": "GET,HEAD,POST"
 };
+*/
 
-var child_process = require('child_process');
+const child_process = require('child_process');
 
 //MongoDB Schema
-var Message = require('./schema/Message');
-var User = require('./schema/User');
+const Message = require('./schema/Message');
+const User = require('./schema/User');
 const { toNamespacedPath } = require('path');
 
-var app = express();
+const app = express();
 
 app.use(morgan("combined"));
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -75,7 +77,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // connect to mongodb
-mongoose.connect('mongodb://localhost:27017/chatapp', function(err) {
+mongoose.connect(process.env.MONGODB_URI, function(err) {
   if(err){
     console.error(err);
   } else {
@@ -100,7 +102,7 @@ var twitterConfig = {
 };
 
 // view設定
-app.set('views', path.join(__dirname,'templates'));
+app.set('views', path.join(__dirname,'view'));
 app.set('view engine', 'pug');
 
 // ---------- Routing ---------------

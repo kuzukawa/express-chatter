@@ -1,6 +1,6 @@
-var mongoose = require('mongoose');
+const mongoose = require('mongoose');
 
-var User = mongoose.Schema({
+const User = mongoose.Schema({
   username: String,
   password: String,
   date: {type: Date, default: new Date()},
