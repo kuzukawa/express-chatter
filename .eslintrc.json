@@ -1,0 +1,22 @@
+{
+  "parserOptions": {
+    "ecmaVersion": 6,
+    "sourceType": "module",
+    "ecmaFeatures": {
+      "jsx": true
+    }
+  },
+  "env": {
+    "node": true,
+    "mongo": true
+  },
+  "extends": "eslint:recommended",
+  "rules": {
+      "semi": "error",
+      "no-extra-semi": "error",
+      "quotes": ["warn", "single"],
+      "no-undef": "warn",
+      "space-before-blocks": ["warn", { "functions": "always" }],
+      "no-unused-vars": "warn"
+  }
+}

@@ -1,3 +1,4 @@
+'use strict';
 const http = require('http');
 const path = require('path');
 const morgan = require('morgan');
@@ -6,7 +7,7 @@ const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const fileUpload = require('express-fileupload');
 const passport = require('passport');
-const session = require('express-session')
+const session = require('express-session');
 const logger = require('./lib/logger');
 const MongoStore = require('connect-mongo')(session);
 require('dotenv').config();
@@ -17,7 +18,7 @@ const TwitterStrategy = require('passport-twitter').Strategy;
 
 // for timezone
 const moment = require('moment-timezone');
-moment.tz.setDefault("Asia/Tokyo");
+moment.tz.setDefault('Asia/Tokyo');
 
 // for security
 const helmet = require('helmet');
@@ -43,23 +44,23 @@ const { toNamespacedPath } = require('path');
 
 const app = express();
 
-app.use(morgan("combined"));
+app.use(morgan('combined'));
 app.use(bodyParser.urlencoded({ extended: false }));
 
 // apply helmet
-var cps = helmet.contentSecurityPolicy.getDefaultDirectives();
-cps["img-src"] = ["*", "data"];
+const cps = helmet.contentSecurityPolicy.getDefaultDirectives();
+cps['img-src'] = ['*', 'data'];
 app.use(helmet({
   contentSecurityPolicy:{directives: cps},
 }));
 
 // apply csrf
-var csrfProtection = csrf();
+const csrfProtection = csrf();
 
-app.use("/static", express.static(path.join(__dirname, "static")));
-app.use("/image", express.static(path.join(__dirname, "image")));
-app.use("/avatar", express.static(path.join(__dirname, "avatar")));
-app.use("/css", express.static(path.join(__dirname, "css")));
+app.use('/static', express.static(path.join(__dirname, 'static')));
+app.use('/image', express.static(path.join(__dirname, 'image')));
+app.use('/avatar', express.static(path.join(__dirname, 'avatar')));
+app.use('/css', express.static(path.join(__dirname, 'css')));
 
 //認証用ミドルウェアの追加
 app.use(session({
@@ -79,9 +80,9 @@ app.use(passport.session());
 // connect to mongodb
 mongoose.connect(process.env.MONGODB_URI, function(err) {
   if(err){
-    console.error(err);
+    logger.error(err);
   } else {
-    console.log("successfully connected to MongodB");
+    logger.info('successfully connected to MongodB');
   }
 });
 
@@ -95,7 +96,7 @@ function checkAuth(req, res, next) {
 }
 
 // Twitter configuration
-var twitterConfig = {
+const twitterConfig = {
   consumerKey: process.env.TWITTER_CONSUMER_KEY,
   consumerSecret: process.env.TWITTER_CONSUMER_SECRET,
   callbackURL: process.env.TWITTER_CALLBACK_URL,
@@ -107,11 +108,11 @@ app.set('view engine', 'pug');
 
 // ---------- Routing ---------------
 //Root
-app.get("/", function(req, res, next) {
+app.get('/', (req, res, next)=> {
   //return res.send("Hello World");
   //return res.render("index", {title: "Hello World"});
   //logger.warn(req.session.user);
-  Message.find({}, function(err, msgs){
+  Message.find({}, (err, msgs)=> {
     if(err) throw err;
     return res.render('index', {
       messages: msgs,
@@ -177,29 +178,29 @@ passport.use(new LocalStrategy(
 ));
 */
 
-passport.use(new TwitterStrategy(twitterConfig,function(token, tokenSecret, profile, done){
-  User.findOne({ twitter_profile_id: profile.id }, function(err,user) {
+passport.use(new TwitterStrategy(twitterConfig,(token, tokenSecret, profile, done)=> {
+  User.findOne({ twitter_profile_id: profile.id }, (err,user)=> {
     if(err) {
       return done(err);
     } else if(!user) {
-      var _user = {
+      const _user = {
         username: profile.displayName,
         twitter_profile_id: profile.id,
         avatar_path: profile.photos[0].value
       };
       var newUser = new User(_user);
-      newUser.save(function(err){
+      newUser.save((err)=> {
         if(err) throw err;
         return done(null, newUser);
       });
     } else {
       return done(null, user);
     }
-  })
+  });
 }));
 app.get('/oauth/twitter', passport.authenticate('twitter'));
-app.get('/oauth/twitter/callback', passport.authenticate('twitter'),function(req, res, next){
-  User.findOne({_id: req.session.passport.user}, function(err, user){
+app.get('/oauth/twitter/callback', passport.authenticate('twitter'),(req, res, next)=> {
+  User.findOne({_id: req.session.passport.user}, (err, user)=> {
     if(err||!req.session) {
       return res.redirect('/oauth/twitter');
     }
@@ -210,70 +211,74 @@ app.get('/oauth/twitter/callback', passport.authenticate('twitter'),function(req
     return res.redirect('/');
   });
 });
-passport.serializeUser(function(user, done) {
+passport.serializeUser((user, done)=> {
   done(null, user._id);
 });
 
-passport.deserializeUser(function(id, done) {
-  User.findOne({_id: id}, function(err, user) {
+passport.deserializeUser((id, done)=> {
+  User.findOne({_id: id}, (err, user)=> {
     done(err, user);
-  })
+  });
 });
 
-app.get("/update", csrfProtection, function(req, res) {
-  return res.render("update", {
+app.get('/update', csrfProtection, (req, res)=> {
+  return res.render('update', {
     user: req.session && req.session.user ? req.session.user : null, 
     csrf: req.csrfToken()});
 });
 
-app.post("/update", checkAuth, fileUpload(), csrfProtection, function(req, res) {
+app.post('/update', checkAuth, fileUpload(), csrfProtection, (req, res)=> {
 
   if(req.files && req.files.image) {    
-    req.files.image.mv('./image/' + req.files.image.name, function(err) {
+    req.files.image.mv('./image/' + req.files.image.name, (err)=> {
       if(err) throw err;
     });   
-    var newMessage = new Message({
+    const newMessage = new Message({
       username: req.body.username,
       avatar_path: req.session.user.avatar_path,
       message: req.body.message,
       image_path: '/image/' + req.files.image.name
     });
+    newMessage.save((err)=> {
+      if(err) throw err;
+      return res.redirect('/');
+    });  
   } else {
-    var newMessage = new Message({
+    const newMessage = new Message({
       username: req.body.username,
       avatar_path: req.session.user.avatar_path,
       message: req.body.message
     });
+    newMessage.save((err)=> {
+      if(err) throw err;
+      return res.redirect('/');
+    }); 
   }
-  newMessage.save((err)=> {
-    if(err) throw err;
-    return res.redirect("/");
-  });
 });
 
-app.get("/form", function(req,res){
-  return res.render("form");
+app.get('/form', (req,res)=> {
+  return res.render('form');
 });
 
-app.post("/form", function(req, res) {
-  return res.render("result", { username: req.body.username,
+app.post('/form', (req, res)=> {
+  return res.render('result', { username: req.body.username,
     message: req.body.message});
 });
 
-app.get("/logout", function(req, res, next){
+app.get('/logout', (req, res, next)=> {
   req.logout();
   delete req.session.user;
-  return res.redirect("/");
+  return res.redirect('/');
 });
 
 // test for error handling( FOR TEST ONLY.)
-app.get("/error", function(req, res, next) {
-  return next(new Error("error"));
+app.get('/error', (req, res, next)=> {
+  return next(new Error('error'));
 }); 
 
 // test for OS Cmd injection(FOR TEST ONLY.)
-app.get("/whois", function(req, res, next) {
-  child_process.execFile('whois', [req.query.url], function(error, stdout, stderr){
+app.get('/whois', (req, res, next)=> {
+  child_process.execFile('whois', [req.query.url], (error, stdout, stderr)=> {
     if(error){
       throw error;
     }
@@ -282,7 +287,7 @@ app.get("/whois", function(req, res, next) {
 });
 
 // error handling
-app.use(function(err, req, res, next) {
+app.use((err, req, res, next)=> {
   logger.error(err);
   if(err.code === 'EBADCSRFTOKEN') {
     res.status(403);
@@ -297,13 +302,13 @@ app.use(function(err, req, res, next) {
 });
 
 // 404 handling
-app.use(function(req, res, next) {
-  var err = new Error('Not Found');
+app.use((req, res, next)=> {
+  const err = new Error('Not Found');
   err.status = 404;
   return res.render('error', {
     status: err.status,
-  })
+  });
 });
 
-var server = http.createServer(app);
+const server = http.createServer(app);
 server.listen(process.env.PORT);

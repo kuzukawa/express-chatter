@@ -4,6 +4,7 @@
   "description": "",
   "main": "app.js",
   "scripts": {
+    "lint": "./node_modules/.bin/eslint . --fix -f codeframe",
     "start": "node app.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -30,5 +31,8 @@
     "passport-twitter": "^1.0.4",
     "pug": "^3.0.0",
     "winston": "^3.3.3"
+  },
+  "devDependencies": {
+    "eslint": "^7.16.0"
   }
 }
