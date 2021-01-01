@@ -35,6 +35,9 @@ const corsOption = {
 };
 */
 
+// for uuid(use for uploaded file name)
+const uuid = require('uuid');
+
 const child_process = require('child_process');
 
 //MongoDB Schema
@@ -228,16 +231,16 @@ app.get('/update', csrfProtection, (req, res)=> {
 });
 
 app.post('/update', checkAuth, fileUpload(), csrfProtection, (req, res)=> {
-
-  if(req.files && req.files.image) {    
-    req.files.image.mv('./image/' + req.files.image.name, (err)=> {
+  if(req.files && req.files.image) {
+    const fname = './image/' + uuid.v4() + path.extname(req.files.image.name);
+    req.files.image.mv(fname, (err)=> {
       if(err) throw err;
     });   
     const newMessage = new Message({
       username: req.body.username,
       avatar_path: req.session.user.avatar_path,
       message: req.body.message,
-      image_path: '/image/' + req.files.image.name
+      image_path: fname
     });
     newMessage.save((err)=> {
       if(err) throw err;
