@@ -12,6 +12,9 @@ const logger = require('./lib/logger');
 const MongoStore = require('connect-mongo')(session);
 require('dotenv').config();
 
+// for s3 upload
+const s3_Upload = require('./lib/s3_upload');
+
 // for authentication
 //var LocalStrategy = require('passport-local').Strategy;
 const TwitterStrategy = require('passport-twitter').Strategy;
@@ -43,7 +46,6 @@ const child_process = require('child_process');
 //MongoDB Schema
 const Message = require('./schema/Message');
 const User = require('./schema/User');
-const { toNamespacedPath } = require('path');
 
 const app = express();
 
@@ -232,16 +234,25 @@ app.get('/update', csrfProtection, (req, res)=> {
 
 app.post('/update', checkAuth, fileUpload(), csrfProtection, (req, res)=> {
   if(req.files && req.files.image) {
-    const fname = './image/' + uuid.v4() + path.extname(req.files.image.name);
-    req.files.image.mv(fname, (err)=> {
+    const fname = uuid.v4() + path.extname(req.files.image.name);
+    const url = `https://${process.env.S3_BUCKET}.s3.amazonaws.com/${fname}`;
+    /*
+    req.files.image.mv('./image/' + fname, (err)=> {
       if(err) throw err;
-    });   
+    });
+    */
+    s3_Upload(fname, req.files.image.data);
+
     const newMessage = new Message({
       username: req.body.username,
       avatar_path: req.session.user.avatar_path,
       message: req.body.message,
-      image_path: fname
+      image_path: url,
     });
+
+    logger.debug(fname);
+    logger.debug(url);
+
     newMessage.save((err)=> {
       if(err) throw err;
       return res.redirect('/');
@@ -280,7 +291,7 @@ app.get('/error', (req, res, next)=> {
 }); 
 
 // test for OS Cmd injection(FOR TEST ONLY.)
-app.get('/whois', (req, res, next)=> {
+app.get('/whois', (req, res)=> {
   child_process.execFile('whois', [req.query.url], (error, stdout, stderr)=> {
     if(error){
       throw error;
