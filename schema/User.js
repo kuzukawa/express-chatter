@@ -1,3 +1,4 @@
+'use strict';
 const mongoose = require('mongoose');
 
 const User = mongoose.Schema({
@@ -8,4 +9,4 @@ const User = mongoose.Schema({
   twitter_profile_id: String
 });
 
-module.exports = mongoose.model('User', User)
+module.exports = mongoose.model('User', User);
