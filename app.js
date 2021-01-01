@@ -250,9 +250,6 @@ app.post('/update', checkAuth, fileUpload(), csrfProtection, (req, res)=> {
       image_path: url,
     });
 
-    logger.debug(fname);
-    logger.debug(url);
-
     newMessage.save((err)=> {
       if(err) throw err;
       return res.redirect('/');
