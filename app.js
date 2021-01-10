@@ -16,7 +16,10 @@ const helmet = require('helmet');
 
 const app = express();
 
-app.use(morgan('combined'));
+// for access log
+app.use(morgan('combined', {stream: logger.stream}));
+
+// for url encode
 app.use(bodyParser.urlencoded({ extended: false }));
 
 // apply helmet

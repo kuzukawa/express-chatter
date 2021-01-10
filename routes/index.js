@@ -11,7 +11,9 @@ moment.tz.setDefault('Asia/Tokyo');
 const router = express.Router();
 
 router.get('/', (req, res, next)=> {
-  Message.find({}, (err, msgs)=> {
+  // 新しい投稿を前に。
+  // 最初は最大10件。
+  Message.find({}).sort({_id: -1}).limit(10).exec((err, msgs)=> {
     if(err) throw err;
     return res.render('index', {
       messages: msgs,
